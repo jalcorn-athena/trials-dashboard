@@ -679,6 +679,17 @@ function render() { renderStats(); renderGantt(); renderTable(); }
 // ── Init ──────────────────────────────────────
 window.addEventListener('resize', () => renderGantt());
 
+document.addEventListener('wheel', e => {
+  const gantt = document.getElementById('gantt-axis');
+  if (!gantt) return;
+  if (!gantt.closest('.gantt-outer').contains(e.target)) return;
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -1 : 1;
+  PX_PER_DAY = Math.max(4, Math.min(60, PX_PER_DAY + delta));
+  centreOnToday();
+  renderGantt();
+}, { passive: false });
+
 // Set up drag on axis after first render
 const observer = new MutationObserver(() => {
   const axis = document.getElementById('gantt-axis');
