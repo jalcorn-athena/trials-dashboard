@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R&D Trial Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+:root{--bg:#0f1109;--bg2:#1a1f12;--bg3:#242b1a;--border:rgba(180,210,100,0.25);--border2:rgba(180,210,100,0.5);--green:#d4ff6e;--green-dim:#a0d030;--teal:#5cffd8;--amber:#ffd050;--coral:#ff6e50;--blue:#70d4ff;--text:#f4ffe8;--text2:#c8e890;--text3:#8abf50;--done:#4a5a38;--done-text:#a0c060}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;min-height:100vh;padding:0 0 4rem}
+header{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 2rem 1rem;border-bottom:.5px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.logo{font-family:'DM Mono',monospace;font-size:15px;color:var(--green);letter-spacing:.12em;text-transform:uppercase}
+.logo span{color:var(--text3)}
+#last-updated{font-family:'DM Mono',monospace;font-size:13px;color:var(--text3)}
+#refresh-btn{font-family:'DM Mono',monospace;font-size:13px;color:var(--green-dim);background:none;border:.5px solid var(--border2);border-radius:4px;padding:5px 12px;cursor:pointer;transition:all .15s}
+#refresh-btn:hover{color:var(--green);border-color:var(--green)}
+main{padding:2rem;max-width:1400px;margin:0 auto}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:2rem}
+.stat{background:var(--bg2);border:.5px solid var(--border);border-radius:8px;padding:14px 16px}
+.stat-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.stat-value{font-size:32px;font-weight:300;color:var(--text);line-height:1;margin-bottom:4px}
+.stat-value.urgent{color:var(--coral)}
+.stat-sub{font-size:13px;color:var(--text3)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem}
+.filter-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-right:2px}
+.fb{font-family:'DM Mono',monospace;font-size:13px;padding:5px 14px;border:.5px solid var(--border);border-radius:20px;background:transparent;color:var(--text3);cursor:pointer;transition:all .15s}
+.fb:hover{color:var(--text2);border-color:var(--border2)}
+.fb.on{background:var(--bg3);border-color:var(--green-dim);color:var(--green)}
+.filter-sep{width:1px;height:16px;background:var(--border);margin:0 4px}
+.section-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.section-title{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.12em}
+.section-line{flex:1;height:.5px;background:var(--border)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.li{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text3)}
+.ls{width:20px;height:8px;border-radius:2px}
+.gantt-wrap{border:.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2.5rem}
+.gr{display:flex;align-items:stretch;border-bottom:.5px solid var(--border);min-height:58px;transition:background .1s}
+.gr:last-child{border-bottom:none}
+.gr:hover{background:var(--bg2)}
+.gm{width:230px;min-width:230px;padding:10px 14px;border-right:.5px solid var(--border)}
+.gn{font-size:15px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.gs{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.gmeta-sub{display:flex;gap:6px;align-items:center}
+.rb{font-family:'DM Mono',monospace;font-size:11px;padding:2px 6px;border-radius:10px;font-weight:500;letter-spacing:.06em}
+.r1{background:rgba(92,255,216,.2);color:var(--teal);border:.5px solid rgba(92,255,216,.35)}
+.r2{background:rgba(255,208,80,.2);color:var(--amber);border:.5px solid rgba(255,208,80,.35)}
+.r3{background:rgba(112,212,255,.2);color:var(--blue);border:.5px solid rgba(112,212,255,.35)}
+.cohort-num{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)}
+.days-label{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.gt{flex:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.gbr{position:relative;height:20px}
+.bar{position:absolute;height:100%;border-radius:3px;display:flex;align-items:center;padding:0 6px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;letter-spacing:.05em}
+.bpend{background:rgba(112,212,255,.3);color:var(--blue);border:.5px solid rgba(112,212,255,.45)}
+.bveg{background:rgba(212,255,110,.35);color:var(--green);border:.5px solid rgba(212,255,110,.5)}
+.bflr{background:rgba(92,255,216,.3);color:var(--teal);border:.5px solid rgba(92,255,216,.45)}
+.bcure{background:rgba(255,110,80,.3);color:var(--coral);border:.5px solid rgba(255,110,80,.45)}
+.bdone{background:var(--done);color:var(--done-text);border:.5px solid rgba(160,192,96,.2)}
+.today-line{position:absolute;top:-5px;bottom:-5px;width:1.5px;background:var(--coral);opacity:.85;z-index:10}
+.gantt-date-row{display:flex;align-items:stretch;border-bottom:.5px solid var(--border);background:var(--bg2)}
+.gantt-date-label{width:230px;min-width:230px;border-right:.5px solid var(--border);display:flex;align-items:center;justify-content:flex-end;padding-right:10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.gantt-date-track{flex:1;position:relative;overflow:hidden;display:flex}
+.gantt-month-cell{height:22px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:.06em;font-weight:500;border-right:.5px solid var(--border);box-sizing:border-box;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex-shrink:0}
+.gantt-day-cell{height:20px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);box-sizing:border-box;flex-shrink:0;border-right:.5px solid rgba(180,210,100,0.08)}
+.gantt-day-cell.today-cell{color:var(--coral);font-weight:500;background:rgba(255,110,80,0.1)}
+.gantt-day-cell.month-end{border-right:.5px solid var(--border)}
+.month-line{position:absolute;top:0;bottom:0;width:.5px;background:var(--border);opacity:.4;z-index:5;pointer-events:none}
+.table-wrap{border:.5px solid var(--border);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
+thead th{text-align:left;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 12px;border-bottom:.5px solid var(--border);background:var(--bg2);white-space:nowrap}
+tbody td{padding:10px 12px;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--bg2)}
+.sp{font-family:'DM Mono',monospace;font-size:12px;padding:3px 10px;border-radius:10px;font-weight:500;letter-spacing:.04em}
+.sppend{background:rgba(112,212,255,.2);color:var(--blue)}
+.spveg{background:rgba(212,255,110,.2);color:var(--green)}
+.spflr{background:rgba(92,255,216,.2);color:var(--teal)}
+.spcure{background:rgba(255,110,80,.2);color:var(--coral)}
+.spdone{background:var(--done);color:var(--done-text)}
+.nb{font-family:'DM Mono',monospace;font-size:12px;padding:3px 10px;border-radius:10px;white-space:nowrap}
+.nok{background:rgba(212,255,110,.2);color:var(--green)}
+.nsoon{background:rgba(255,208,80,.25);color:var(--amber)}
+.nurg{background:rgba(255,110,80,.25);color:var(--coral)}
+.ndone{background:var(--done);color:var(--done-text)}
+.tc{font-family:'DM Mono',monospace;font-size:12px;padding:3px 10px;border-radius:10px;cursor:pointer;border:.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .12s}
+.tc:hover{border-color:var(--green-dim);color:var(--green)}
+.tp{display:none;position:absolute;z-index:200;background:var(--bg2);border:.5px solid var(--border2);border-radius:8px;padding:10px 14px;min-width:240px;max-width:320px;right:0;top:30px}
+.tp.open{display:block}
+.ti{font-size:14px;color:var(--text);padding:5px 0;border-bottom:.5px solid var(--border);display:flex;gap:8px;align-items:flex-start;line-height:1.5;white-space:normal}
+.ti:last-child{border-bottom:none}
+.td-dot{width:4px;height:4px;border-radius:50%;background:var(--green-dim);margin-top:7px;flex-shrink:0}
+#loading,#error{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;gap:12px;color:var(--text3);font-family:'DM Mono',monospace;font-size:14px;text-align:center;line-height:1.8}
+.spinner{width:24px;height:24px;border:1.5px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#error{color:var(--coral);display:none}
+#error a{color:var(--amber)}
+.divider{border:none;border-top:.5px solid var(--border);margin:2rem 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">R<span>&amp;</span>D <span>//</span> Trial Tracker</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="last-updated">—</span>
+    <button id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+  </div>
+</header>
+<main>
+  <div id="loading"><div class="spinner"></div>Loading trial data…</div>
+  <div id="error">
+    &#9888; Could not load sheet data.<br>
+    <span id="err-msg">Check your SHEET_CSV_URL setting.</span><br>
+    <a id="err-url" href="#" target="_blank">Open CSV URL to verify</a>
+  </div>
+  <div id="app" style="display:none">
+    <div class="stats" id="stats"></div>
+    <div class="filter-row">
+      <span class="filter-label">Room</span>
+      <button class="fb on" data-g="room" data-v="all" onclick="sf(this)">All</button>
+      <button class="fb" data-g="room" data-v="Tunable" onclick="sf(this)">Tunable</button>
+      <button class="fb" data-g="room" data-v="HPS" onclick="sf(this)">HPS</button>
+      <button class="fb" data-g="room" data-v="LED" onclick="sf(this)">LED</button>
+      <div class="filter-sep"></div>
+      <span class="filter-label">Stage</span>
+      <button class="fb on" data-g="stage" data-v="all" onclick="sf(this)">All</button>
+      <button class="fb" data-g="stage" data-v="Pending" onclick="sf(this)">Pending</button>
+      <button class="fb" data-g="stage" data-v="Veg" onclick="sf(this)">Veg</button>
+      <button class="fb" data-g="stage" data-v="Flower" onclick="sf(this)">Flower</button>
+      <button class="fb" data-g="stage" data-v="Cure" onclick="sf(this)">Cure</button>
+      <button class="fb" data-g="stage" data-v="Complete" onclick="sf(this)">Complete</button>
+    </div>
+    <div class="section-head"><span class="section-title">Timeline</span><div class="section-line"></div></div>
+    <div class="legend">
+      <div class="li"><div class="ls" style="background:rgba(112,212,255,0.4)"></div>Pending</div>
+      <div class="li"><div class="ls" style="background:rgba(212,255,110,0.45)"></div>Veg</div>
+      <div class="li"><div class="ls" style="background:rgba(92,255,216,0.4)"></div>Flower</div>
+      <div class="li"><div class="ls" style="background:rgba(255,110,80,0.4)"></div>Cure</div>
+      <div class="li"><div style="width:2px;height:12px;background:var(--coral);opacity:.7;border-radius:1px"></div>Today</div>
+    </div>
+    <div class="gantt-wrap" id="gantt"></div>
+    <div class="divider"></div>
+    <div class="section-head"><span class="section-title">All Trials</span><div class="section-line"></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:32px">C#</th>
+          <th style="width:180px">Trial</th>
+          <th style="width:130px">Strain</th>
+          <th style="width:76px">Room</th>
+          <th style="width:68px">Stage</th>
+          <th style="width:82px">Transplant</th>
+          <th style="width:64px">Flip</th>
+          <th style="width:74px">Harvest</th>
+          <th style="width:82px">Cure done</th>
+          <th style="width:130px">Next milestone</th>
+          <th style="width:72px">To-do</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+// ══════════════════════════════════════════════
+//  STEP 1 — Set your Sheet ID and tab GID
+//
+//  Find SHEET_ID: it's the long string in your
+//  Google Sheet URL between /d/ and /edit
+//  e.g. docs.google.com/spreadsheets/d/SHEET_ID/edit
+//
+//  Find SHEET_GID: open the Cohort Tracker tab,
+//  look at the URL — it ends with #gid=NUMBER
+//  Use that number. (Default 0 if no gid in URL)
+// ══════════════════════════════════════════════
+const SHEET_ID  = '1xFfMsJbW3baCY5I7ag85C70n708u0dETBeuixCfIYGk';
+const SHEET_GID = '656201243'; // change if your tab has a different gid
+
+// ══════════════════════════════════════════════
+//  WEB APP URL — paste the one you just copied
+// ══════════════════════════════════════════════
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbykeL0jYXA312xFgBpmoDDqoAvVXmoUBgnjah2HQPXTCsKe1nODUqVJl8vueYBKAzv_kQ/exec'; // ← PASTE HERE
+
+// Core write function (no client auth needed)
+async function updateTrial(cohort, field, value) {
+  if (WEB_APP_URL.includes('YOUR_WEB_APP_ID_HERE')) {
+    alert('❌ Set WEB_APP_URL first (step 2 above)');
+    return false;
+  }
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cohort: Number(cohort), field, value: value || '' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      console.log('✅ Saved to sheet:', data.result);
+      loadData();           // refresh dashboard instantly
+      return true;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (err) {
+    console.error('❌ Write error:', err);
+    alert('Update failed:\n' + err.message + '\n\n(If still seeing auth error → re-run doGet in Apps Script)');
+    return false;
+  }
+}
+
+// ── Date editor (called when you click any date cell) ──
+function editDate(cohort, field, current) {
+  const newVal = prompt(`New ${field.toUpperCase()} date for C${cohort} (YYYY-MM-DD or leave blank to clear):`, current);
+  if (newVal === null) return;                 // user cancelled
+  updateTrial(cohort, field, newVal);          // sends to Apps Script backend
+}
+
+// ══════════════════════════════════════════════
+//  STEP 2 — Confirm column order matches your sheet
+//  These are 0-based column indices (A=0, B=1, ...)
+// ══════════════════════════════════════════════
+const COL = {
+  room:0, cohort:1, description:2, media:3,
+  transplant:4, flip:5, harvest:6, cure:7,
+  strain:8, todo:9, notes:10
+};
+
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+let TRIALS=[];
+let openPopup=null;
+const F={room:'all',stage:'all'};
+
+function parseCSV(text){
+  const rows=[];let row=[],field='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i],nx=text[i+1];
+    if(inQ){if(ch==='"'&&nx==='"'){field+='"';i++;}else if(ch==='"'){inQ=false;}else{field+=ch;}}
+    else{if(ch==='"'){inQ=true;}else if(ch===','){row.push(field.trim());field='';}
+    else if(ch==='\n'){row.push(field.trim());rows.push(row);row=[];field='';}
+    else if(ch!=='\r'){field+=ch;}}
+  }
+  if(field||row.length){row.push(field.trim());rows.push(row);}
+  return rows;
+}
+
+function parseDate(val){
+  if(!val||val==='')return null;
+  val=String(val).trim();
+  if(/^\d{5}$/.test(val)){const d=new Date((parseInt(val)-25569)*86400000);d.setHours(0,0,0,0);return d;}
+  const d=new Date(val);if(!isNaN(d)){d.setHours(0,0,0,0);return d;}
+  return null;
+}
+
+function fmtDate(d){if(!d)return'—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});}
+function daysFrom(d){if(!d)return null;return Math.round((d-TODAY)/86400000);}
+
+function normaliseRoom(raw){
+  if(!raw)return null;const s=String(raw).toLowerCase();
+  if(s.includes('tunable')||s.includes('(1)'))return'Tunable';
+  if(s.includes('hps')||s.includes('(2)'))return'HPS';
+  if(s.includes('led')||s.includes('(3)'))return'LED';
+  return raw.trim();
+}
+
+function parseTodos(val){
+  if(!val||val.trim()==='')return[];
+  return val.split('\n').map(s=>s.trim()).filter(Boolean);
+}
+
+function getStage(t){
+  if(!t.transplant||TODAY<t.transplant)return'Pending';
+  if(!t.flip||TODAY<t.flip)return'Veg';
+  if(!t.harvest||TODAY<t.harvest)return'Flower';
+  if(!t.cure||TODAY<t.cure)return'Cure';
+  return'Complete';
+}
+
+function getNext(t){
+  for(const[l,d]of[['Transplant',t.transplant],['Flip',t.flip],['Harvest',t.harvest],['Cure done',t.cure]]){
+    if(!d)continue;const df=daysFrom(d);if(df>=0)return{l,d:df};
+  }
+  return null;
+}
+
+async function loadData(){
+  document.getElementById('loading').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('error').style.display='none';
+  if(SHEET_ID==='YOUR_SHEET_ID_HERE'){
+    showError('No Sheet ID configured. Open this file and paste your Sheet ID into the SHEET_ID variable at the top of the script.');
+    return;
+  }
+  // Uses Google Visualization API endpoint — has proper CORS headers, works from any hosted page
+  const csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:csv&gid='+SHEET_GID;
+  document.getElementById('err-url').href=csvUrl;
+  try{
+    const url=csvUrl+'&_='+Date.now();
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    const rows=parseCSV(text);
+    TRIALS=[];
+    for(let i=1;i<rows.length;i++){
+      const row=rows[i];
+      if(!row||row.every(c=>!c))continue;
+      const cohort=parseFloat(row[COL.cohort]);
+      if(isNaN(cohort))continue;
+      TRIALS.push({
+        cohort,room:normaliseRoom(row[COL.room]),
+        description:row[COL.description]||null,media:row[COL.media]||null,
+        transplant:parseDate(row[COL.transplant]),flip:parseDate(row[COL.flip]),
+        harvest:parseDate(row[COL.harvest]),cure:parseDate(row[COL.cure]),
+        strain:row[COL.strain]||null,
+        todos:parseTodos(row[COL.todo]),notes:row[COL.notes]||null,
+      });
+    }
+    TRIALS.sort((a,b)=>b.cohort-a.cohort);
+    const now=new Date();
+    document.getElementById('last-updated').textContent='Updated '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    render();
+  }catch(e){showError('Failed to fetch data: '+e.message+'. Make sure your Sheet is published and the URL is correct.');}
+}
+
+function showError(msg){
+  document.getElementById('loading').style.display='none';
+  const el=document.getElementById('error');
+  el.style.display='flex';
+  document.getElementById('err-msg').textContent=msg;
+}
+
+function sf(btn){
+  const g=btn.dataset.g,v=btn.dataset.v;F[g]=v;
+  document.querySelectorAll('.fb[data-g="'+g+'"]').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');render();
+}
+
+function filteredTrials(){
+  return TRIALS.filter(t=>{
+    if(F.room!=='all'&&t.room!==F.room)return false;
+    if(F.stage!=='all'&&getStage(t)!==F.stage)return false;
+    return true;
+  });
+}
+
+function rb(r){const c=r==='Tunable'?'r1':r==='HPS'?'r2':'r3';return'<span class="rb '+c+'">'+(r||'?')+'</span>';}
+function sp(s){const m={Pending:'sppend',Veg:'spveg',Flower:'spflr',Cure:'spcure',Complete:'spdone'};return'<span class="sp '+(m[s]||'spdone')+'">'+s+'</span>';}
+function nbadge(m){
+  if(!m)return'<span class="nb ndone">Complete</span>';
+  const c=m.d<=3?'nurg':m.d<=7?'nsoon':'nok';
+  const txt=m.d===0?'Today!':m.d===1?'Tomorrow':m.d+'d';
+  return'<span class="nb '+c+'">'+m.l+' &middot; '+txt+'</span>';
+}
+
+function toggleTodo(id){
+  const el=document.getElementById('tp-'+id);if(!el)return;
+  if(openPopup&&openPopup!==el)openPopup.classList.remove('open');
+  el.classList.toggle('open');
+  openPopup=el.classList.contains('open')?el:null;
+}
+document.addEventListener('click',e=>{
+  if(openPopup&&!e.target.closest('.tc')&&!e.target.closest('.tp')){openPopup.classList.remove('open');openPopup=null;}
+});
+
+function render(){
+  const data=filteredTrials();
+  const active=data.filter(t=>getStage(t)!=='Complete').length;
+  const urgent=data.filter(t=>{const m=getNext(t);return m&&m.d<=3;}).length;
+  const complete=data.filter(t=>getStage(t)==='Complete').length;
+  const am=data.filter(t=>getNext(t));
+  const avg=am.length?Math.round(am.reduce((a,t)=>a+getNext(t).d,0)/am.length):0;
+  const todos=data.reduce((a,t)=>a+t.todos.length,0);
+  document.getElementById('stats').innerHTML=
+    '<div class="stat"><div class="stat-label">Active trials</div><div class="stat-value">'+active+'</div><div class="stat-sub">of '+data.length+' shown</div></div>'+
+    '<div class="stat"><div class="stat-label">Avg days to milestone</div><div class="stat-value">'+avg+'</div><div class="stat-sub">across active</div></div>'+
+    '<div class="stat"><div class="stat-label">Urgent (&#8804;3 days)</div><div class="stat-value'+(urgent>0?' urgent':'')+'">'+urgent+'</div><div class="stat-sub">need attention now</div></div>'+
+    '<div class="stat"><div class="stat-label">Open to-dos</div><div class="stat-value">'+todos+'</div><div class="stat-sub">across shown trials</div></div>';
+
+  if(!data.length){
+    document.getElementById('gantt').innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-family:DM Mono,monospace;font-size:12px">No trials match filters</div>';
+    document.getElementById('tbody').innerHTML='<tr><td colspan="11" style="padding:2rem;text-align:center;color:var(--text3)">No trials match filters</td></tr>';
+    return;
+  }
+
+  const wd=data.filter(t=>t.transplant);
+  const allD=wd.flatMap(t=>[t.transplant,t.cure||t.harvest||t.flip||t.transplant]);
+  const minD=allD.reduce((a,b)=>a<b?a:b);
+  const maxD=allD.reduce((a,b)=>a>b?a:b);
+  const span=Math.max((maxD-minD)/86400000,1);
+  function pct(d){if(!d)return null;return Math.max(0,Math.min(100,(d-minD)/86400000/span*100));}
+  const tp=((TODAY-minD)/86400000/span*100);
+
+  let gh='';
+  // Build full date axis: month row + day row
+  {
+    const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    // Collect months spanned
+    let months=[];
+    let cur=new Date(minD);cur.setDate(1);
+    const last=new Date(maxD);
+    while(cur<=last){
+      const y=cur.getFullYear(),mo=cur.getMonth();
+      const mStart=new Date(y,mo,1);
+      const mEnd=new Date(y,mo+1,0);// last day of month
+      const visStart=mStart<minD?minD:mStart;
+      const visEnd=mEnd>maxD?maxD:mEnd;
+      const l=pct(visStart),r=pct(new Date(visEnd.getTime()+86400000-1));
+      months.push({y,mo,label:monthNames[mo]+(cur.getFullYear()!==TODAY.getFullYear()?' '+String(y).slice(2):''),l,w:Math.min(r,100)-l,mEnd});
+      cur=new Date(y,mo+1,1);
+    }
+    // Month row
+    gh+='<div class="gantt-date-row"><div class="gantt-date-label">Month</div><div class="gantt-date-track">';
+    months.forEach(m=>{gh+='<div class="gantt-month-cell" style="width:'+m.w.toFixed(2)+'%;left:'+m.l.toFixed(2)+'%">'+m.label+'</div>';});
+    gh+='</div></div>';
+    // Day row
+    gh+='<div class="gantt-date-row"><div class="gantt-date-label">Day</div><div class="gantt-date-track">';
+    let d=new Date(minD);
+    while(d<=maxD){
+      const dayPct=pct(d);
+      const nextD=new Date(d);nextD.setDate(nextD.getDate()+1);
+      const nextPct=nextD>maxD?100:pct(nextD);
+      const w=nextPct-dayPct;
+      const isToday=d.getTime()===TODAY.getTime();
+      const isMonthEnd=d.getDate()===new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+      const cls='gantt-day-cell'+(isToday?' today-cell':'')+(isMonthEnd?' month-end':'');
+      // Only show day number if cell is wide enough
+      const dayLabel=w>1.2?d.getDate():'';
+      gh+='<div class="'+cls+'" style="width:'+w.toFixed(3)+'%">'+dayLabel+'</div>';
+      d=new Date(nextD);
+    }
+    gh+='</div></div>';
+  }
+  // Month boundary vertical lines (stored for injection into each row)
+  let monthLines='';
+  {
+    let cur=new Date(minD);cur.setDate(1);cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    while(cur<=maxD){
+      const p=pct(cur);
+      if(p>0&&p<100)monthLines+='<div class="month-line" style="left:'+p.toFixed(2)+'%"></div>';
+      cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    }
+  }
+  data.forEach(t=>{
+    const m=getNext(t),st=getStage(t);
+    const dl=m?(m.d===0?'Today':m.d===1?'1d':m.d+'d'):'Done';
+    const dc=m?(m.d<=3?'var(--coral)':m.d<=7?'var(--amber)':'var(--green)'):'var(--text3)';
+    const lbl=t.description||(t.strain?t.strain:'Cohort '+t.cohort);
+    let bars='';
+    if(!t.transplant){bars='<div class="bar bpend" style="left:0%;width:20%">PENDING</div>';}
+    else{
+      const tx=pct(t.transplant),fl=pct(t.flip),ha=pct(t.harvest),cu=pct(t.cure);
+      const ve=fl!=null?fl:Math.min(tp,100);
+      if(tx!=null)bars+='<div class="bar bveg" style="left:'+tx.toFixed(1)+'%;width:'+Math.max(0,ve-tx).toFixed(1)+'%">VEG</div>';
+      if(fl!=null&&ha!=null)bars+='<div class="bar bflr" style="left:'+fl.toFixed(1)+'%;width:'+(ha-fl).toFixed(1)+'%">FLOWER</div>';
+      if(ha!=null){const ce=cu!=null?cu:Math.min(ha+5,100);bars+='<div class="bar '+(st==='Complete'?'bdone':'bcure')+'" style="left:'+ha.toFixed(1)+'%;width:'+(ce-ha).toFixed(1)+'%">CURE</div>';}
+    }
+    gh+='<div class="gr"><div class="gm"><div class="gn" title="'+lbl+'">'+lbl+'</div>'+(t.strain?'<div class="gs">'+t.strain+'</div>':'')+'<div class="gmeta-sub">'+rb(t.room)+'<span class="cohort-num">C'+t.cohort+'</span><span class="days-label" style="color:'+dc+'">'+dl+'</span></div></div><div class="gt"><div class="gbr">'+monthLines+(t.transplant&&tp>=0&&tp<=100?'<div class="today-line" style="left:'+tp.toFixed(1)+'%"></div>':'')+bars+'</div></div></div>';
+  });
+  document.getElementById('gantt').innerHTML=gh;
+
+  let tb='';
+  data.forEach(t=>{
+    const m=getNext(t),tc=t.todos.length;
+    const ti=t.todos.map(x=>'<div class="ti"><div class="td-dot"></div>'+x+'</div>').join('');
+    const lbl=t.description||(t.strain||'Cohort '+t.cohort);
+    tb+='<tr><td style="color:var(--text3);font-family:DM Mono,monospace">'+t.cohort+'</td><td style="font-weight:500" title="'+lbl+'">'+lbl+'</td><td style="color:var(--text2)">'+(t.strain||'—')+'</td><td>'+rb(t.room)+'</td><td>'+sp(getStage(t))+'</td><td onclick="editDate('+t.cohort+', \'transplant\', \''+(t.transplant?t.transplant.toISOString().split(\'T\')[0]:'')+'\')" style="color:var(--text2);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;text-decoration:underline dotted;">'+fmtDate(t.transplant)+'</td><td onclick="editDate('+t.cohort+', \'flip\', \''+(t.flip?t.flip.toISOString().split(\'T\')[0]:'')+'\')" style="color:var(--text2);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;text-decoration:underline dotted;">'+fmtDate(t.flip)+'</td><td onclick="editDate('+t.cohort+', \'harvest\', \''+(t.harvest?t.harvest.toISOString().split(\'T\')[0]:'')+'\')" style="color:var(--text2);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;text-decoration:underline dotted;">'+fmtDate(t.harvest)+'</td><td onclick="editDate('+t.cohort+', \'cure\', \''+(t.cure?t.cure.toISOString().split(\'T\')[0]:'')+'\')" style="color:var(--text2);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;text-decoration:underline dotted;">'+fmtDate(t.cure)+'</td><td>'+nbadge(m)+'</td><td style="position:relative;overflow:visible">'+(tc>0?'<span class="tc" onclick="toggleTodo(\''+t.cohort+'\')">'+tc+' task'+(tc!==1?'s':'')+'</span><div class="tp" id="tp-'+t.cohort+'">'+ti+'</div>':'<span style="color:var(--text3)">—</span>')+'</td></tr>';
+  });
+  document.getElementById('tbody').innerHTML=tb;
+}
+
+loadData();
+</script>
+</body>
+</html>
