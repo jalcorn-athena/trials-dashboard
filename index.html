@@ -216,13 +216,12 @@ tbody tr:hover td{background:var(--bg2)}
           <th style="width:160px">Trial</th>
           <th style="width:120px">Strain</th>
           <th style="width:72px">Room</th>
-          <th style="width:64px">Stage</th>
           <th style="width:78px">Transplant</th>
           <th style="width:62px">Flip</th>
           <th style="width:72px">Harvest</th>
           <th style="width:78px">Cure done</th>
           <th style="width:120px">Next milestone</th>
-          <th style="width:66px">To-do</th>
+          <th style="width:220px">To-do</th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -249,7 +248,7 @@ let openNotes = null;
 const F = { room:'all', stage:'all' };
 
 // px per day — controls zoom level
-const PX_PER_DAY = 14;
+let PX_PER_DAY = 14;
 // scroll offset in px (how far left we've panned)
 let scrollX = 0;
 let isDragging = false;
@@ -510,18 +509,21 @@ function renderGantt() {
       bars = `<div class="bar bpend" style="left:8px;width:80px" data-tip="Pending — no transplant date set"
         onmouseenter="showTip(this.dataset.tip,event)" onmousemove="moveTip(event)" onmouseleave="hideTip()">PENDING</div>`;
     } else {
-      const vegEnd  = t.flip    || TODAY;
-      const flrEnd  = t.harvest || TODAY;
-      const cureEnd = t.cure    || new Date(Math.min((t.harvest||TODAY).getTime()+30*86400000, TODAY.getTime()+5*86400000));
-      if (t.flip)    bars += makeBar(t.transplant, t.flip,    'bveg',  'VEG',    'Veg');
-      else           bars += makeBar(t.transplant, TODAY,     'bveg',  'VEG',    'Veg');
+      const txX = xOf(t.transplant);
+      if (txX !== null) {
+        bars += `<div style="position:absolute;left:${txX.toFixed(1)}px;top:15%;width:2px;height:70%;background:var(--green);opacity:0.7;border-radius:1px;z-index:99"
+          data-tip="Transplant: ${fmtD(t.transplant)}"
+          onmouseenter="showTip(this.dataset.tip,event)" onmousemove="moveTip(event)" onmouseleave="hideTip()"></div>`;
+      }
+      const vegEnd = t.flip || (TODAY > t.transplant ? TODAY : new Date(t.transplant.getTime() + 7*86400000));
+      bars += makeBar(t.transplant, vegEnd, 'bveg', 'VEG', 'Veg');
       if (t.flip && t.harvest) bars += makeBar(t.flip, t.harvest, 'bflr', 'FLOWER', 'Flower');
+      else if (t.flip && !t.harvest) bars += makeBar(t.flip, TODAY > t.flip ? TODAY : t.flip, 'bflr', 'FLOWER', 'Flower');
       if (t.harvest) {
         const ce = t.cure || new Date(t.harvest.getTime() + 30*86400000);
         bars += makeBar(t.harvest, ce, st==='Complete'?'bdone':'bcure', 'CURE', 'Cure');
       }
     }
-
     // Today line within track
     const tx = xOf(TODAY);
     const todayLineHTML = (tx !== null && tx >= 0 && tx <= trackW)
@@ -554,19 +556,33 @@ function renderTable() {
       <td>${editCell(t.cohort,'description',lbl,'text')}</td>
       <td>${editCell(t.cohort,'strain',t.strain||'','text')}</td>
       <td>${editRoomCell(t)}</td>
-      <td>${sp(getStage(t))}</td>
       <td>${editCell(t.cohort,'transplant',fmtISO(t.transplant),'date',fmtD(t.transplant))}</td>
       <td>${editCell(t.cohort,'flip',fmtISO(t.flip),'date',fmtD(t.flip))}</td>
       <td>${editCell(t.cohort,'harvest',fmtISO(t.harvest),'date',fmtD(t.harvest))}</td>
       <td>${editCell(t.cohort,'cure',fmtISO(t.cure),'date',fmtD(t.cure))}</td>
       <td>${nb(m)}</td>
-      <td style="position:relative;overflow:visible">${tc>0
-        ?`<span class="tc" onclick="toggleTodo('${t.cohort}')">${tc} task${tc!==1?'s':''}</span><div class="tp" id="tp-${t.cohort}">${ti}</div>`
-        :'<span style="color:var(--text3)">—</span>'}</td>
+      <td style="min-width:200px;white-space:normal">
+        <div id="todo-list-${t.cohort}">
+          ${t.todo && t.todo.length > 0
+            ? t.todo.map((task, i) => `
+              <div style="display:flex;align-items:flex-start;gap:6px;padding:2px 0">
+                <input type="checkbox" style="margin-top:3px;accent-color:var(--green);flex-shrink:0"
+                  onchange="toggleTodoItem(${t.cohort}, ${i}, this.checked)"
+                  ${task.startsWith('[x] ') ? 'checked' : ''}>
+                <span style="font-size:12px;color:var(--text);line-height:1.4">${task.replace(/^\[x\] /,'')}</span>
+              </div>`).join('')
+            : ''}
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <input type="text" placeholder="Add task…" id="new-todo-${t.cohort}"
+              style="font-size:12px;padding:3px 6px;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)"
+              onkeydown="if(event.key==='Enter')addTodoItem(${t.cohort})">
+          </div>
+        </div>
+      </td>
       <td style="text-align:center"><span style="cursor:pointer;font-size:14px;color:var(--text3)" onclick="toggleNotes(${t.cohort})" title="Notes">&#9998;</span></td>
     </tr>
     <tr class="notes-row" id="notes-row-${t.cohort}" style="display:none">
-      <td colspan="12">
+      <td colspan="11">
         <div class="notes-panel">
           <div class="notes-label">Notes — C${t.cohort} ${lbl}</div>
           <textarea class="notes-ta" id="notes-ta-${t.cohort}" rows="3">${t.notes||''}</textarea>
@@ -575,7 +591,7 @@ function renderTable() {
       </td>
     </tr>`;
   });
-  document.getElementById('tbody').innerHTML = tb || '<tr><td colspan="12" style="padding:2rem;text-align:center;color:var(--text3)">No trials match filters</td></tr>';
+  document.getElementById('tbody').innerHTML = tb || '<tr><td colspan="11" style="padding:2rem;text-align:center;color:var(--text3)">No trials match filters</td></tr>';
 }
 
 // ── Editable cell helpers ─────────────────────
@@ -700,6 +716,29 @@ const observer = new MutationObserver(() => {
 observer.observe(document.body, {childList:true, subtree:true});
 
 loadData();
+
+function toggleTodoItem(cohort, index, checked) {
+  const t = TRIALS.find(t => t.cohort === cohort);
+  if (!t) return;
+  const tasks = [...(t.todo || [])];
+  tasks[index] = checked
+    ? '[x] ' + tasks[index].replace(/^\[x\] /, '')
+    : tasks[index].replace(/^\[x\] /, '');
+  t.todo = tasks;
+  saveField(cohort, 'todo', tasks.join('\n'));
+}
+
+function addTodoItem(cohort) {
+  const input = document.getElementById('new-todo-' + cohort);
+  if (!input || !input.value.trim()) return;
+  const t = TRIALS.find(t => t.cohort === cohort);
+  if (!t) return;
+  const tasks = [...(t.todo || []), input.value.trim()];
+  t.todo = tasks;
+  input.value = '';
+  saveField(cohort, 'todo', tasks.join('\n'));
+}
+
 </script>
 </body>
 </html>
