@@ -316,6 +316,8 @@ async function saveField(cohort, field, value) {
       if (['transplant','flip','harvest','cure'].includes(field)) {
         t[field] = value ? new Date(value) : null;
         if (t[field]) t[field].setHours(0,0,0,0);
+      } else if (field === 'todo') {
+        t.todo = value ? value.split('\n').map(s => s.trim()).filter(Boolean) : [];
       } else {
         t[field] = value;
       }
